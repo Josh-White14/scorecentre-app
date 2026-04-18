@@ -1,0 +1,18 @@
+#target folder 
+/target
+*.class
+
+#log files
+*.log
+
+#Package Files
+*.jar
+*.war
+
+#IDE files 
+.vscode/
+.idea/
+*.iml
+
+#System Files
+.DS_Store
