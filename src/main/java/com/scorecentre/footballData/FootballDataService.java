@@ -4,15 +4,15 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-
-
 
 /** 
  * This class send query requests to Footy-Data's APIs 
@@ -38,18 +38,24 @@ public class FootballDataService {
     public List<String> queryFBDATA(URI uri) {
         //TODO: Implement Completable Future
         
-        List<String> footballDataResponse = this.restClient.get()
+        ResponseEntity<Object> response = this.restClient.get()
+            .uri(uri)
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
-            .body(new ParameterizedTypeReference<List<String>>(){});
+            .toEntity(Object.class);
 
-            System.out.println("STRINGS:  " +  "https://api.football-data.org/v4"  + uri.toString());
-            System.out.println(footballDataResponse);
+            Object responseBody = response.getBody();
 
-        return footballDataResponse;
-            
-        
+            if (responseBody instanceof List) {
+                List<String> stringList = (List<String>) responseBody;
+                return stringList;
+            } else if (responseBody instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) responseBody;
+            } else {
+                System.out.println("lol");
+            }
+
+        return Collections.emptyList();
     }
-
 }
 
