@@ -1,43 +1,34 @@
 package com.scorecentre.footballData;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
-/** 
- * This class send query requests to Footy-Data's APIs 
- */
+import io.github.cdimascio.dotenv.Dotenv;
 
 @Service
 public class FootballDataService {
     
     private final RestClient restClient;
-    
-    // TODO: Implement cache since rates are limited
-    // Private final Map<...>... = new ConcurrentHashMap<>();
-    // TODO: Implement logging 
 
+    Dotenv dotenv = Dotenv.load();
+    
     public FootballDataService(RestClient.Builder builder) {
+        String apiKey = dotenv.get("FOOTBALL_DATA_API_KEY");
 
         this.restClient = builder
-                            .defaultHeader("X-Auth-Token", System.getenv("FOOTBALL_DATA_API_KEY"))
+                            .defaultHeader("X-Auth-Token", apiKey)
                             .build();
         }
     
-    // TODO: CHANGE TO DTO Obj once complete
     public List<String> queryFBDATA(URI uri) {
-        //TODO: Implement Completable Future
-        
+        try {
         ResponseEntity<Object> response = this.restClient.get()
             .uri(uri)
             .accept(MediaType.APPLICATION_JSON)
@@ -47,15 +38,20 @@ public class FootballDataService {
             Object responseBody = response.getBody();
 
             if (responseBody instanceof List) {
-                List<String> stringList = (List<String>) responseBody;
-                return stringList;
+                return (List<String>) responseBody;
             } else if (responseBody instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) responseBody;
+                // Handle the map as needed
+                System.out.println("Response is a map: " + responseBody);
             } else {
-                System.out.println("lol");
+                System.out.println("Unexpected response type: " + responseBody.getClass().getName());
             }
 
-        return Collections.emptyList();
+        } catch (RestClientException e) {
+            System.err.println("Error making request to API: " + e.getMessage());
+            e.printStackTrace();
     }
+
+        return Collections.emptyList();
+}
 }
 
