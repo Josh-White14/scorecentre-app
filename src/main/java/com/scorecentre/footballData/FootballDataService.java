@@ -4,23 +4,23 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import io.github.cdimascio.dotenv.Dotenv;
 
 @Service
 public class FootballDataService {
     
     private final RestClient restClient;
 
-    Dotenv dotenv = Dotenv.load();
     
-    public FootballDataService(RestClient.Builder builder) {
-        String apiKey = dotenv.get("FOOTBALL_DATA_API_KEY");
+    public FootballDataService(RestClient.Builder builder, @Value("${FOOTBALL_DATA_API_KEY}") String apiKey) {
 
         this.restClient = builder
                             .defaultHeader("X-Auth-Token", apiKey)
@@ -41,7 +41,10 @@ public class FootballDataService {
                 return (List<String>) responseBody;
             } else if (responseBody instanceof Map) {
                 // Handle the map as needed
-                System.out.println("Response is a map: " + responseBody);
+                Map<String, String> mapResponse = (Map<String, String>) responseBody;
+                System.out.println(responseBody);
+            
+                
             } else {
                 System.out.println("Unexpected response type: " + responseBody.getClass().getName());
             }

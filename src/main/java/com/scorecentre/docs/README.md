@@ -8,6 +8,12 @@ Currently, Football-Data is throwing permission errors because of headers and st
 TODO:
 - Implement Logging
 - Implement Cache
-- Change DTO to Object
 - Add Error Handling
 - More APIs
+
+
+---
+
+Microservice hell. 
+Database table for each model. I.e. Team db, Match db, Player db etc.
+
