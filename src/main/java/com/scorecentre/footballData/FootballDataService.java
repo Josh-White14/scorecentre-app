@@ -1,17 +1,17 @@
 package com.scorecentre.footballData;
 
 import java.net.URI;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+
+import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
+import com.scorecentre.footballData.DTOs.MatchDTO;
 
 
 @Service
@@ -27,34 +27,32 @@ public class FootballDataService {
                             .build();
         }
     
-    public List<String> queryFBDATA(URI uri) {
+    
+    public MatchDTO queryFBDATA(URI uri) {
         try {
-        ResponseEntity<Object> response = this.restClient.get()
-            .uri(uri)
-            .accept(MediaType.APPLICATION_JSON)
-            .retrieve()
-            .toEntity(Object.class);
+            ResponseEntity<Object> response = this.restClient.get()
+                    .uri(uri)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(Object.class);
 
             Object responseBody = response.getBody();
 
-            if (responseBody instanceof List) {
-                return (List<String>) responseBody;
-            } else if (responseBody instanceof Map) {
-                // Handle the map as needed
-                Map<String, String> mapResponse = (Map<String, String>) responseBody;
-                System.out.println(responseBody);
-            
-                
-            } else {
-                System.out.println("Unexpected response type: " + responseBody.getClass().getName());
+            if (responseBody instanceof Map) {
+                Map<String, Object> mapResponse = (Map<String, Object>) responseBody;
+                List<Map<String, Object>> matches = (List<Map<String, Object>>) mapResponse.get("matches");
+
+                if (matches != null && !matches.isEmpty()) {
+                    Map<String, Object> match = (Map<String, Object>) matches.get(0);
+                    return FootballDataDTOFactory.createMatchDTO(match);
+                }
             }
 
         } catch (RestClientException e) {
             System.err.println("Error making request to API: " + e.getMessage());
             e.printStackTrace();
+        }
+            return null;
     }
-
-        return Collections.emptyList();
-}
 }
 
