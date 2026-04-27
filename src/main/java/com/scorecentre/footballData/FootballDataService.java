@@ -1,8 +1,12 @@
 package com.scorecentre.footballData;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,13 +16,17 @@ import org.springframework.web.client.RestClientException;
 
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
 import com.scorecentre.footballData.DTOs.MatchDTO;
+import com.scorecentre.models.Team;
+import com.scorecentre.repository.TeamRepository;
 
 
 @Service
 public class FootballDataService {
     
     private final RestClient restClient;
-
+    
+    @Autowired
+    private TeamRepository teamRepository;
     
     public FootballDataService(RestClient.Builder builder, @Value("${FOOTBALL_DATA_API_KEY}") String apiKey) {
 
@@ -28,10 +36,34 @@ public class FootballDataService {
         }
     
     
-    public MatchDTO queryFBDATA(URI uri) {
+
+    
+    public MatchDTO queryTeamMatchesByName(String teamName) {
+        System.out.println(">>> ENTERED queryTeamMatchesByName");
+        // TODO: properly implement the db 
+        //int teamId =  mongolookup teamId from db 
+        Team team = teamRepository.findByteamName(teamName);
+
+        if (team == null) {
+            team = new Team();
+            team.setTeamName(teamName);
+        }
+        
+        int teamId = team.getFootballDataId(); // Football dataID is api id 
+        
+        if (teamId == 0) {
+            teamId = fetchTeamIdFromApi(teamName);
+            team.setFootballDataId(teamId);
+            teamRepository.save(team);
+        }
+        
+        
         try {
+            String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED&limit=3";
+            System.out.println("Requesting URL: " + uriString);
+
             ResponseEntity<Object> response = this.restClient.get()
-                    .uri(uri)
+                    .uri(URI.create(uriString))
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .toEntity(Object.class);
@@ -43,8 +75,8 @@ public class FootballDataService {
                 List<Map<String, Object>> matches = (List<Map<String, Object>>) mapResponse.get("matches");
 
                 if (matches != null && !matches.isEmpty()) {
-                    Map<String, Object> match = (Map<String, Object>) matches.get(0);
-                    return FootballDataDTOFactory.createMatchDTO(match);
+                    Map<String, Object> matchResponse = (Map<String, Object>) matches.get(0);
+                    return FootballDataDTOFactory.createMatchDTO(matchResponse);
                 }
             }
 
@@ -54,5 +86,49 @@ public class FootballDataService {
         }
             return null;
     }
-}
 
+    
+    private int fetchTeamIdFromApi(String teamName) {
+        try {
+            String uri = "https://api.football-data.org/v4/competitions/PL/teams";
+            
+            System.out.println("Fetching PL teams to find: " + teamName);
+            
+            ResponseEntity<Map> response = restClient.get()
+                .uri(URI.create(uri))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .toEntity(Map.class);
+
+            Map<String, Object> body = response.getBody();
+
+            if (body != null && body.containsKey("teams")) {
+                List<Map<String, Object>> teams = (List<Map<String, Object>>) body.get("teams");
+
+                for (Map<String, Object> t : teams) {
+                    String name = (String) t.get("name");
+                    String shortName = (String) t.get("shortName");
+
+                    if ((name != null && name.equalsIgnoreCase(teamName)) ||
+                        (shortName != null && shortName.equalsIgnoreCase(teamName))) {
+                        return ((Number) t.get("id")).intValue();
+                    }
+                }
+
+                throw new RuntimeException(
+                    "No match for team: " + teamName +
+                    ". PL teams available: " + teams.stream()
+                        .map(x -> x.get("shortName"))
+                        .toList()
+                );
+            }
+
+            throw new RuntimeException("No teams found in PL response");
+
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch team ID for: " + teamName, e);
+        }
+    }
+}

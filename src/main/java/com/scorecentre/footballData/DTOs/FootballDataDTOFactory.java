@@ -3,27 +3,24 @@ package com.scorecentre.footballData.DTOs;
 import java.util.Map;
 
 import com.scorecentre.models.Team;
+import com.scorecentre.repository.TeamFactory;
 
 public class FootballDataDTOFactory {
 
     public static MatchDTO createMatchDTO(Map<String, Object> matchData) {
+
         Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
         Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
         Map<String, Object> scoreData    = (Map<String, Object>) matchData.get("score");
         Map<String, Object> fullTime     = (Map<String, Object>) scoreData.get("fullTime");
         Map<String, Object> competition  = (Map<String, Object>) matchData.get("competition");
 
-        Team homeTeam = new Team();
-        homeTeam.setTeamName((String) homeTeamData.get("name"));
-
-        Team awayTeam = new Team();
-        awayTeam.setTeamName((String) awayTeamData.get("name"));
-
+        Team homeTeam = TeamFactory.createFromMatchAPIData(homeTeamData);
+        Team awayTeam = TeamFactory.createFromMatchAPIData(awayTeamData);
         String result = fullTime.get("home") + "-" + fullTime.get("away");
+        
 
-        return new MatchDTO(
-            homeTeam,
-            awayTeam,
+        return new MatchDTO(homeTeam,awayTeam,
             (String) matchData.get("status"),
             result,
             (String) competition.get("name"),

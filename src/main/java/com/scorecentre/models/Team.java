@@ -4,17 +4,26 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 
-@Document("Collection = teams")
+@Document(collection = "teams")
 public class Team {
 
     @Id
-    private Long id;
+    private String id; // MongoDB, our ID
 
     private String teamName;
     private String country;
     private String managerName;
+    private int footballDataId; // ID within FBDATA API
+    private String shortName;
+    private String tla; // Three letter abr e.g. MCI, LIV
+    private String crest; // URI FOR KIT
     
-    public Long getId() {
+    // Empty Constructor, add attributes via setters.
+    public Team() {
+        
+    }
+    
+    public String getId() {
         return id;
     }
 
@@ -36,8 +45,30 @@ public class Team {
     public void setManagerName(String managerName) {
         this.managerName = managerName;
     }
-    
-    
 
-    // ... 
+    public void setId(String id) {
+        this.id = id;
+    }
+    
+    public void setShortName(String shortName) {
+        this.shortName = shortName;
+    }
+
+    public void setTla(String tla) {
+        this.tla = tla;
+    }
+
+    public void setCrest(String crest) {
+        this.crest = crest;
+    }
+
+    public int getFootballDataId() {
+        return footballDataId;
+    }
+
+    public void setFootballDataId(int footballDataId) {
+        this.footballDataId = footballDataId;
+    }
+
+    
 }
