@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.scorecentre.footballData.DTOs.MatchDTO;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 
@@ -16,10 +17,10 @@ public class FootballDataController {
     @Autowired
     FootballDataService footballDataService;
 
-    @GetMapping("/data/test")
-    public MatchDTO getTestData() {
+    @GetMapping("/data/{teamName}")
+    public MatchDTO getTestData(@PathVariable String teamName) {
         //
-        MatchDTO response = footballDataService.queryTeamMatchesByName("Arsenal"); //"Burnley FC" 
+        MatchDTO response = footballDataService.queryTeamMatchesByName(teamName); //"Burnley FC" 
         return response;
     }
     
