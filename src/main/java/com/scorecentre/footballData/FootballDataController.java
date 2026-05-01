@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController()
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/data")
 public class FootballDataController {
 
     @Autowired
@@ -28,13 +28,13 @@ public class FootballDataController {
     @Autowired
     TeamRepository teamRepository;
 
-    @GetMapping("/data/matches/{teamName}")
+    @GetMapping("/matches/{teamName}")
     public MatchDTO getTeamLatestMatchByName(@PathVariable String teamName) {
         MatchDTO response = footballDataService.queryTeamMatchesByName(teamName); //"Burnley FC" 
         return response;
     }
 
-    @GetMapping("/data/all")
+    @GetMapping("/teams/all")
     public List<TeamDTO> getAllTeams() {
         List<TeamDTO> teams = teamRepository.findAll().stream().map(team -> FootballDataDTOFactory.createTeamDTO(team)).toList();
         return teams;
