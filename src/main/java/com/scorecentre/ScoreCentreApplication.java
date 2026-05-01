@@ -1,13 +1,21 @@
 package com.scorecentre;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import com.scorecentre.repository.TeamFactory;
+
 /**
  * Hello world!
  *
  */
-public class App 
-{
+@SpringBootApplication
+public class ScoreCentreApplication {
+    
     public static void main( String[] args )
     {
-        System.out.println( "Hello World!" );
+        SpringApplication.run(ScoreCentreApplication.class, args);
+        //TeamFactory.createTeam("Burnley", "England", "Scott Parker");
+
     }
 }

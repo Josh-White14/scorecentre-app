@@ -1,3 +1,4 @@
+
 #target folder 
 /target
 *.class
@@ -16,3 +17,6 @@
 
 #System Files
 .DS_Store
+
+#Secrets
+.env
