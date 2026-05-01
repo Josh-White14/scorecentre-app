@@ -12,19 +12,24 @@ public class FootballDataDTOFactory {
         Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
         Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
         Map<String, Object> scoreData    = (Map<String, Object>) matchData.get("score");
-        Map<String, Object> fullTime     = (Map<String, Object>) scoreData.get("fullTime");
+        Map<String, Object> fullTime     = (Map<String, Object>) matchData.get("fullTime");
         Map<String, Object> competition  = (Map<String, Object>) matchData.get("competition");
+
+        String status = (String) matchData.get("status");
 
         Team homeTeam = TeamFactory.createFromMatchAPIData(homeTeamData);
         Team awayTeam = TeamFactory.createFromMatchAPIData(awayTeamData);
+        
         String result = fullTime.get("home") + "-" + fullTime.get("away");
+        String competitionName = (String) competition.get("name");
+        String utcDate = (String) matchData.get("utcDate");
         
 
         return new MatchDTO(homeTeam,awayTeam,
-            (String) matchData.get("status"),
+            status,
             result,
-            (String) competition.get("name"),
-            (String) matchData.get("utcDate")
+            competitionName, 
+            utcDate
         );
     }
 

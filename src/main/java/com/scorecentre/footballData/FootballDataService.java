@@ -90,6 +90,8 @@ public class FootballDataService {
     
     private int fetchTeamIdFromApi(String teamName) {
         try {
+            //TODO: THIS ONLY WORKS FOR PRMIER LEAGUE TEAMS
+            
             String uri = "https://api.football-data.org/v4/competitions/PL/teams";
             
             System.out.println("Fetching PL teams to find: " + teamName);
