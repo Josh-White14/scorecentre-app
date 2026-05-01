@@ -20,8 +20,8 @@ import com.scorecentre.footballData.DTOs.MatchDTO;
 import com.scorecentre.footballData.DTOs.PlayerDTO;
 import com.scorecentre.models.Player;
 import com.scorecentre.models.Team;
-import com.scorecentre.repository.ITeamRepository;
-import com.scorecentre.repository.IPlayerRepository;
+import com.scorecentre.repository.TeamRepository;
+import com.scorecentre.repository.PlayerRepository;
 
 
 @Service
@@ -30,10 +30,10 @@ public class FootballDataService {
     private final RestClient restClient;
     
     @Autowired
-    private ITeamRepository teamRepository;
+    private TeamRepository teamRepository;
 
     @Autowired
-    private IPlayerRepository playerRepository;
+    private PlayerRepository playerRepository;
     
     public FootballDataService(RestClient.Builder builder, @Value("${FOOTBALL_DATA_API_KEY}") String apiKey) {
 
