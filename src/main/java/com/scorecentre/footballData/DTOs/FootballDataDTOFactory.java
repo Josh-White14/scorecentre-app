@@ -13,7 +13,7 @@ public class FootballDataDTOFactory {
         Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
         Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
         Map<String, Object> scoreData    = (Map<String, Object>) matchData.get("score");
-        Map<String, Object> fullTime     = (Map<String, Object>) matchData.get("fullTime");
+        Map<String, Object> fullTime     = (Map<String, Object>) scoreData.get("fullTime");
         Map<String, Object> competition  = (Map<String, Object>) matchData.get("competition");
 
         String status = (String) matchData.get("status");
