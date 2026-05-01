@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import com.scorecentre.exceptions.ResourceNotFoundException;
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
 import com.scorecentre.footballData.DTOs.MatchDTO;
 import com.scorecentre.models.Team;
@@ -39,25 +40,25 @@ public class FootballDataService {
 
     
     public MatchDTO queryTeamMatchesByName(String teamName) {
-        System.out.println(">>> ENTERED queryTeamMatchesByName");
-        // TODO: properly implement the db 
-        //int teamId =  mongolookup teamId from db 
         Team team = teamRepository.findByteamName(teamName);
 
         if (team == null) {
             team = new Team();
             team.setTeamName(teamName);
         }
-        
-        int teamId = team.getFootballDataId(); // Football dataID is api id 
-        
+
+        int teamId = team.getFootballDataId();
+
         if (teamId == 0) {
             teamId = fetchTeamIdFromApi(teamName);
             team.setFootballDataId(teamId);
             teamRepository.save(team);
         }
-        
-        
+
+        return fetchMatchesFromApi(teamId);
+    }
+
+    private MatchDTO fetchMatchesFromApi(int teamId) {
         try {
             String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED&limit=3";
             System.out.println("Requesting URL: " + uriString);
@@ -75,8 +76,7 @@ public class FootballDataService {
                 List<Map<String, Object>> matches = (List<Map<String, Object>>) mapResponse.get("matches");
 
                 if (matches != null && !matches.isEmpty()) {
-                    Map<String, Object> matchResponse = (Map<String, Object>) matches.get(0);
-                    return FootballDataDTOFactory.createMatchDTO(matchResponse);
+                    return FootballDataDTOFactory.createMatchDTOfromMatchData((Map<String, Object>) matches.get(0));
                 }
             }
 
@@ -84,7 +84,7 @@ public class FootballDataService {
             System.err.println("Error making request to API: " + e.getMessage());
             e.printStackTrace();
         }
-            return null;
+            throw new ResourceNotFoundException("Team not found");
     }
 
     

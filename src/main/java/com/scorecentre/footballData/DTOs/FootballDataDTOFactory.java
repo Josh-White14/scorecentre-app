@@ -7,7 +7,7 @@ import com.scorecentre.repository.TeamFactory;
 
 public class FootballDataDTOFactory {
 
-    public static MatchDTO createMatchDTO(Map<String, Object> matchData) {
+    public static MatchDTO createMatchDTOfromMatchData(Map<String, Object> matchData) {
 
         Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
         Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
@@ -26,5 +26,10 @@ public class FootballDataDTOFactory {
             (String) competition.get("name"),
             (String) matchData.get("utcDate")
         );
+    }
+
+    public static TeamDTO createTeamDTO (Team team) {
+        TeamDTO teamDTO = new TeamDTO(team);
+        return teamDTO;
     }
 }
