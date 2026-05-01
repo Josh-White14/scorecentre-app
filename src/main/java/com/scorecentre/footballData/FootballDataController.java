@@ -34,6 +34,8 @@ public class FootballDataController {
         return response;
     }
 
+    // Repeat above for teams endpoint, but return list of teams instead of matches. 
+
     @GetMapping("/data/all")
     public List<TeamDTO> getAllTeams() {
         List<TeamDTO> teams = teamRepository.findAll().stream().map(team -> FootballDataDTOFactory.createTeamDTO(team)).toList();

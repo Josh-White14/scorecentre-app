@@ -16,6 +16,7 @@ TODO:
 - Implement Cache
 - Add Error Handling
 - More APIs
+- Figure out searching for specific players. 
 ---
 
 Microservice hell. 
