@@ -17,8 +17,11 @@ import org.springframework.web.client.RestClientException;
 import com.scorecentre.exceptions.ResourceNotFoundException;
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
 import com.scorecentre.footballData.DTOs.MatchDTO;
+import com.scorecentre.footballData.DTOs.PlayerDTO;
+import com.scorecentre.models.Player;
 import com.scorecentre.models.Team;
 import com.scorecentre.repository.TeamRepository;
+import com.scorecentre.repository.PlayerRepository;
 
 
 @Service
@@ -28,6 +31,9 @@ public class FootballDataService {
     
     @Autowired
     private TeamRepository teamRepository;
+
+    @Autowired
+    private PlayerRepository playerRepository;
     
     public FootballDataService(RestClient.Builder builder, @Value("${FOOTBALL_DATA_API_KEY}") String apiKey) {
 
@@ -56,6 +62,13 @@ public class FootballDataService {
         }
 
         return fetchMatchesFromApi(teamId);
+    }
+
+    public PlayerDTO queryPlayerByFullName(String fullPlayerName) {
+        
+        throw new UnsupportedOperationException("Player search not implemented yet");
+
+
     }
 
     private MatchDTO fetchMatchesFromApi(int teamId) {
@@ -132,5 +145,11 @@ public class FootballDataService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch team ID for: " + teamName, e);
         }
+    }
+
+    private int fetchPlayerIdFromApi(String fullPlayerName) {
+       
+        throw new UnsupportedOperationException("Player search not implemented yet");
+
     }
 }
