@@ -45,8 +45,6 @@ public class FootballDataController {
         return teams;
     }
 
-    // TODO: Implement these
-
     @GetMapping("/teams/{teamName}/players")
     public List<PlayerDTO> getAllPlayerFromTeam(@PathVariable String teamName) {
         List<PlayerDTO> players = footballDataService.fetchSquadByTeamName(teamName);
