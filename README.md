@@ -17,6 +17,7 @@ TODO:
 - Add Error Handling
 - More APIs
 - Figure out searching for specific players. 
+- Improve TeamDTO and populate more team data
 ---
 
 Microservice hell. 
