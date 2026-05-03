@@ -37,13 +37,19 @@ public class FootballDataDTOFactory {
     }
 
     public static PlayerDTO createPlayerDTOfromPlayerData(Map<String, Object> playerData) {
-        String firstName = (String) playerData.get("firstName");
-        String lastName = (String) playerData.get("lastName");
+        String fullName = (String) playerData.get("name");
+        
+        //Split fullname to name parts.
+        String[] nameParts = fullName != null ? fullName.split(" ", 2) : new String[]{"", ""}; // ternary to check null
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : ""; // ternary to check length
+
         String position = (String) playerData.get("position");
         String dateOfBirth = (String) playerData.get("dateOfBirth");
         String nationality = (String) playerData.get("nationality");
-        String startOfContractWithCurrentTeam = (String) playerData.get("startOfContract");
-        String endOfContractWithCurrentTeam = (String) playerData.get("endOfContract");
+        
+        String startOfContractWithCurrentTeam = null;
+        String endOfContractWithCurrentTeam = null;
         
         return new PlayerDTO(
             firstName, 

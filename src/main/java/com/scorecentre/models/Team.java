@@ -1,5 +1,7 @@
 package com.scorecentre.models;
 
+import java.util.List;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -16,7 +18,10 @@ public class Team {
     private int footballDataId; // ID within FBDATA API
     private String shortName;
     private String tla; // Three letter abr e.g. MCI, LIV
-    private String crest; // URI FOR KIT
+    private String crest;
+
+    private List<String> playerIds; // Store reference instead of object (in db)
+    // might be worth making it a map, String, String (ID, Name)
     
     // Empty Constructor, add attributes via setters.
     public Team() {
@@ -81,6 +86,14 @@ public class Team {
 
     public String getId() {
         return id;
+    }
+
+    public void setPlayerIds(List<String> playerIds) {
+        this.playerIds = playerIds;
+    }
+
+    public List<String> getPlayerIds() {
+        return playerIds;
     }
     
     

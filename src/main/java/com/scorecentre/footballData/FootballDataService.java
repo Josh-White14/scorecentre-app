@@ -3,6 +3,7 @@ package com.scorecentre.footballData;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,9 +19,11 @@ import com.scorecentre.exceptions.ResourceNotFoundException;
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
 import com.scorecentre.footballData.DTOs.MatchDTO;
 import com.scorecentre.footballData.DTOs.PlayerDTO;
+import com.scorecentre.footballData.DTOs.TeamDTO;
 import com.scorecentre.models.Player;
 import com.scorecentre.models.Team;
 import com.scorecentre.repository.TeamRepository;
+import com.scorecentre.repository.PlayerFactory;
 import com.scorecentre.repository.PlayerRepository;
 
 
@@ -43,33 +46,11 @@ public class FootballDataService {
         }
     
     
-
-    
     public MatchDTO queryTeamMatchesByName(String teamName) {
-        Team team = teamRepository.findByteamName(teamName);
-
-        if (team == null) {
-            team = new Team();
-            team.setTeamName(teamName);
-        }
-
-        int teamId = team.getFootballDataId();
-
-        if (teamId == 0) {
-            teamId = fetchTeamIdFromApi(teamName);
-            team.setFootballDataId(teamId);
-            teamRepository.save(team);
-        }
-
-        return fetchMatchesFromApi(teamId);
+        Team team = resolveTeam(teamName);
+        return fetchMatchesFromApi(team.getFootballDataId());
     }
 
-    public PlayerDTO queryPlayerByFullName(String fullPlayerName) {
-        
-        throw new UnsupportedOperationException("Player search not implemented yet");
-
-
-    }
 
     private MatchDTO fetchMatchesFromApi(int teamId) {
         try {
@@ -147,9 +128,72 @@ public class FootballDataService {
         }
     }
 
-    private int fetchPlayerIdFromApi(String fullPlayerName) {
-       
-        throw new UnsupportedOperationException("Player search not implemented yet");
+    public List<PlayerDTO> fetchSquadByTeamName(String teamName) {
+        Team team = resolveTeam(teamName);
 
+        try {
+            String uriString = "https://api.football-data.org/v4/teams/" + team.getFootballDataId();
+            System.out.println("Fetching squad from: " + uriString);
+
+            ResponseEntity<Object> response = this.restClient.get()
+                    .uri(URI.create(uriString))
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(Object.class);
+
+            Object responseBody = response.getBody();
+
+            if (responseBody instanceof Map) {
+                Map<String, Object> mapResponse = (Map<String, Object>) responseBody;
+                List<Map<String, Object>> squad = (List<Map<String, Object>>) mapResponse.get("squad");
+
+                if (squad != null && !squad.isEmpty()) {
+                    List<String> playerIds = new ArrayList<>();
+                    List<PlayerDTO> playerDTOs = new ArrayList<>();
+
+                    for (Map<String, Object> playerData : squad) {
+                        Player player = PlayerFactory.createFromAPIData(playerData);
+                        playerRepository.save(player);
+                        playerIds.add(player.getId());
+                        playerDTOs.add(FootballDataDTOFactory.createPlayerDTOfromPlayerData(playerData));
+                    }
+
+                    // link players to team and save
+                    team.setPlayerIds(playerIds);
+                    teamRepository.save(team);
+
+                    return playerDTOs;        
+                }
+            }
+
+        } catch (RestClientException e) {
+            System.err.println("Error fetching squad: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        throw new ResourceNotFoundException("No squad found for team: " + teamName);
+    }
+
+    private Team resolveTeam(String teamName) {
+    Team team = teamRepository.findByteamName(teamName);
+
+    if (team == null) {
+        team = new Team();
+        team.setTeamName(teamName);
+    }
+
+    int teamId = team.getFootballDataId();
+    if (teamId == 0) {
+        teamId = fetchTeamIdFromApi(teamName);
+        team.setFootballDataId(teamId);
+        teamRepository.save(team);
+    }
+        return team;
+    }
+
+    public TeamDTO queryTeamByName(String teamName) {
+        Team team = resolveTeam(teamName);
+        return FootballDataDTOFactory.createTeamDTO(team);
     }
 }
+
