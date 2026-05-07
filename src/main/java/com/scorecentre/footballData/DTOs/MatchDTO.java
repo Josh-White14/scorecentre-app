@@ -6,14 +6,14 @@ import com.scorecentre.models.Team;
 
 public class MatchDTO implements Serializable {
 
-    private Team homeTeam;
-    private Team awayTeam;
+    private TeamDTO homeTeam;
+    private TeamDTO awayTeam;
     private String status;
     private String result;
     private String competition;
     private String utcDate;
 
-    public MatchDTO(Team homeTeam, Team awayTeam, String status,
+    public MatchDTO(TeamDTO homeTeam, TeamDTO awayTeam, String status,
                     String result, String competition, String utcDate) {
         this.homeTeam = homeTeam;
         this.awayTeam = awayTeam;
@@ -23,19 +23,19 @@ public class MatchDTO implements Serializable {
         this.utcDate = utcDate;
     }
 
-    public Team getHomeTeam() {
+    public TeamDTO getHomeTeam() {
         return homeTeam;
     }
 
-    public void setHomeTeam(Team homeTeam) {
+    public void setHomeTeam(TeamDTO homeTeam) {
         this.homeTeam = homeTeam;
     }
 
-    public Team getAwayTeam() {
+    public TeamDTO getAwayTeam() {
         return awayTeam;
     }
 
-    public void setAwayTeam(Team awayTeam) {
+    public void setAwayTeam(TeamDTO awayTeam) {
         this.awayTeam = awayTeam;
     }
 

@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -55,8 +56,7 @@ public class FootballDataService {
 
     private MatchDTO fetchMatchesFromApi(int teamId) {
         try {
-            String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED&limit=3";
-            System.out.println("Requesting URL: " + uriString);
+            String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED";
 
             ResponseEntity<Object> response = this.restClient.get()
                     .uri(URI.create(uriString))
@@ -71,10 +71,17 @@ public class FootballDataService {
                 List<Map<String, Object>> matches = (List<Map<String, Object>>) mapResponse.get("matches");
 
                 if (matches != null && !matches.isEmpty()) {
-                    return FootballDataDTOFactory.createMatchDTOfromMatchData((Map<String, Object>) matches.get(0));
+                    Map<String, Object> matchData = (Map<String, Object>) matches.get(0);
+
+                    Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
+                    Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
+
+                    TeamDTO homeTeam = resolveTeamDTO(homeTeamData);
+                    TeamDTO awayTeam = resolveTeamDTO(awayTeamData);
+
+                    return FootballDataDTOFactory.createMatchDTOfromMatchData(matchData, homeTeam, awayTeam);
                 }
             }
-
         } catch (RestClientException e) {
             System.err.println("Error making request to API: " + e.getMessage());
             e.printStackTrace();
@@ -89,7 +96,6 @@ public class FootballDataService {
             
             String uri = "https://api.football-data.org/v4/competitions/PL/teams";
             
-            System.out.println("Fetching PL teams to find: " + teamName);
             
             ResponseEntity<Map> response = restClient.get()
                 .uri(URI.create(uri))
@@ -131,14 +137,11 @@ public class FootballDataService {
 
     public List<PlayerDTO> fetchSquadByTeamName(String teamName) {
         Team team = resolveTeam(teamName);
-        System.out.println("Player IDs size: " + team.getPlayerIds().size());
-        System.out.println("Player IDs: " + team.getPlayerIds());
 
         if (team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
             throw new ResourceNotFoundException("No squad found for team: " + teamName);
         }
         List<Player> players = playerRepository.findByIdIn(team.getPlayerIds());
-        System.out.println("Players found by findAllById: " + players.size());
         
         return players.stream()
                 .map(FootballDataDTOFactory::createPlayerDTOfromPlayer)
@@ -146,16 +149,17 @@ public class FootballDataService {
     }
 
     private Team resolveTeam(String teamName) {
-        Team team = teamRepository.findByteamName(teamName);
+        String normalised = teamName.trim().toLowerCase();
+        Team team = teamRepository.findByteamName(normalised);
 
         if (team == null) {
             team = new Team();
-            team.setTeamName(teamName);
+            team.setTeamName(normalised);
         }
 
         int teamId = team.getFootballDataId();
         if (teamId == 0) {
-            teamId = fetchTeamIdFromApi(teamName);
+            teamId = fetchTeamIdFromApi(normalised);
             team.setFootballDataId(teamId);
         }
 
@@ -168,17 +172,9 @@ public class FootballDataService {
     }
 
     public TeamDTO queryTeamByName(String teamName) {
-        Team team = resolveTeam(teamName);
-
-        List<Player> playersList = playerRepository.findByIdIn(team.getPlayerIds());
-
-         Map<String, String> players = playersList.stream()
-            .collect(Collectors.toMap(
-                    Player::getId,
-                    p -> p.getFirstName() + " " + p.getLastName()
-            ));
-
-        return new TeamDTO(team, players);
+        String normalised = teamName.trim().toLowerCase();
+        Team team = resolveTeam(normalised);
+        return new TeamDTO(team, getPlayerMapForTeam(team));
     }
 
 
@@ -196,6 +192,10 @@ public class FootballDataService {
 
             if (responseBody instanceof Map) {
                 Map<String, Object> mapResponse = (Map<String, Object>) responseBody;
+
+                team.setShortName((String) mapResponse.get("shortName"));
+                team.setTla((String) mapResponse.get("tla"));
+                team.setCrest((String) mapResponse.get("crest"));
 
                 // area
                 Map<String, Object> area = (Map<String, Object>) mapResponse.get("area");
@@ -223,7 +223,6 @@ public class FootballDataService {
                 if (squad != null && !squad.isEmpty()) {
                     List<String> playerIds = new ArrayList<>();
                     for (Map<String, Object> playerData : squad) {
-                        System.out.println("Saving " + playerIds.size() + " players to team");
                         int apiId = ((Number) playerData.get("id")).intValue();
                         Player player = playerRepository.findByPlayerFootballDataId(apiId);
                         if (player == null) {
@@ -232,7 +231,6 @@ public class FootballDataService {
                         Player saved = playerRepository.save(player);
                         playerIds.add(saved.getId());
                     }
-                    System.out.println("Saving " + playerIds.size() + " players to team");
                     team.setPlayerIds(playerIds);
                 }
             }
@@ -243,6 +241,45 @@ public class FootballDataService {
         }
 
         return team;
+    }
+
+    private TeamDTO resolveTeamDTO(Map<String, Object> teamData) {
+        String teamName = (String) teamData.get("name");
+        String shortName = (String) teamData.get("shortName");
+        String normalisedName = teamName != null ? teamName.trim().toLowerCase() : null;
+        String normalisedShort = shortName != null ? shortName.trim().toLowerCase() : null;
+
+        // try both
+        Team team = teamRepository.findByteamName(normalisedName);
+        if (team == null) {
+            team = teamRepository.findByteamName(normalisedShort);
+        }
+
+        // return if in db
+        if (team != null && team.getShortName() != null) {
+            team = resolveTeam(teamName);
+            return new TeamDTO(team, getPlayerMapForTeam(team));
+        }
+
+        Team matchTeam = new Team();
+        matchTeam.setTeamName(teamName);
+        matchTeam.setShortName(shortName);
+        matchTeam.setTla((String) teamData.get("tla"));
+        matchTeam.setCrest((String) teamData.get("crest"));
+        return new TeamDTO(matchTeam, getPlayerMapForTeam(matchTeam));
+    }
+
+    private Map<String, String> getPlayerMapForTeam(Team team) {
+
+        if (team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
+            return new HashMap<>();
+        }
+        return playerRepository.findByIdIn(team.getPlayerIds())
+                .stream()
+                .collect(Collectors.toMap(
+                        Player::getId,
+                        p -> p.getFirstName() + " " + p.getLastName()
+                ));
     }
 
 }

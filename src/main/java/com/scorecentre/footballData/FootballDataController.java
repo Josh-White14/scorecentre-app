@@ -33,7 +33,7 @@ public class FootballDataController {
 
     @GetMapping("/matches/{teamName}")
     public MatchDTO getTeamLatestMatchByName(@PathVariable String teamName) {
-        MatchDTO response = footballDataService.queryTeamMatchesByName(teamName); //"Burnley FC" 
+        MatchDTO response = footballDataService.queryTeamMatchesByName(teamName.replace("-", " ").trim()); //remove spaces
         return response;
     }
 
@@ -47,7 +47,7 @@ public class FootballDataController {
 
     @GetMapping("/teams/{teamName}/players")
     public List<PlayerDTO> getAllPlayerFromTeam(@PathVariable String teamName) {
-        List<PlayerDTO> players = footballDataService.fetchSquadByTeamName(teamName);
+        List<PlayerDTO> players = footballDataService.fetchSquadByTeamName(teamName.replace("-", " ").trim());
         return players;
     }
 
@@ -55,7 +55,7 @@ public class FootballDataController {
     
     @GetMapping("/teams/{teamName}")
     public TeamDTO getTeamByName(@PathVariable String teamName) {
-        TeamDTO response = footballDataService.queryTeamByName(teamName);
+        TeamDTO response = footballDataService.queryTeamByName(teamName.replace("-", " ").trim());
         return response;
     }
     
