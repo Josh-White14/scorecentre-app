@@ -16,6 +16,7 @@ public class TeamSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        /** 
         if (teamRepository.count() == 0) {
             Team burnley = new Team();
             burnley.setFootballDataId(328);
@@ -36,6 +37,7 @@ public class TeamSeeder implements ApplicationRunner {
             teamRepository.saveAll(List.of(burnley, manCity));
             System.out.println("Teams seeded successfully");
         }
+            */
     }
 }
 

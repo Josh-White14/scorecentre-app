@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
 import com.scorecentre.footballData.DTOs.MatchDTO;
+import com.scorecentre.footballData.DTOs.PlayerDTO;
 import com.scorecentre.footballData.DTOs.TeamDTO;
+import com.scorecentre.models.Player;
 import com.scorecentre.models.Team;
 import com.scorecentre.repository.TeamRepository;
 
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 
+//TODO: We need to seperate controllers
 
 @RestController()
 @RequestMapping("/api/v1/data")
@@ -41,7 +44,21 @@ public class FootballDataController {
         List<TeamDTO> teams = teamRepository.findAll().stream().map(team -> FootballDataDTOFactory.createTeamDTO(team)).toList();
         return teams;
     }
-   
+
+    @GetMapping("/teams/{teamName}/players")
+    public List<PlayerDTO> getAllPlayerFromTeam(@PathVariable String teamName) {
+        List<PlayerDTO> players = footballDataService.fetchSquadByTeamName(teamName);
+        return players;
+    }
+
+    
+    
+    @GetMapping("/teams/{teamName}")
+    public TeamDTO getTeamByName(@PathVariable String teamName) {
+        TeamDTO response = footballDataService.queryTeamByName(teamName);
+        return response;
+    }
+    
     
     
 

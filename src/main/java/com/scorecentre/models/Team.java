@@ -1,6 +1,11 @@
 package com.scorecentre.models;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 
@@ -13,14 +18,29 @@ public class Team {
     private String teamName;
     private String country;
     private String managerName;
+    
+    @Indexed(unique=true)
     private int footballDataId; // ID within FBDATA API
     private String shortName;
     private String tla; // Three letter abr e.g. MCI, LIV
-    private String crest; // URI FOR KIT
-    
+    private String crest;
+    private String lastResult;
+
+    private List<String> competitions;
+
+    private List<String> playerIds = new ArrayList<>(); //(ID, Name)  // Stores Our MONGO id
+
     // Empty Constructor, add attributes via setters.
     public Team() {
         
+    }
+
+    public List<String> getCompetitions() {
+        return competitions;
+    }
+
+    public void setCompetitions(List<String> competitions) {
+        this.competitions = competitions;
     }
 
     public String getTeamName() {
@@ -79,8 +99,24 @@ public class Team {
         this.crest = crest;
     }
 
+    public String getLastResult() {
+        return lastResult;
+    }
+
+    public void setLastResult(String lastResult) {
+        this.lastResult = lastResult;
+    }
+
     public String getId() {
         return id;
+    }
+
+    public void setPlayerIds(List<String> playerIds) {
+        this.playerIds = playerIds;
+    }
+
+    public List<String> getPlayerIds() {
+        return playerIds;
     }
     
     

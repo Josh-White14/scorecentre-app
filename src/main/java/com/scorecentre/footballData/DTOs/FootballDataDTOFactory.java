@@ -6,6 +6,10 @@ import com.scorecentre.models.Team;
 import com.scorecentre.models.Player;
 import com.scorecentre.repository.TeamFactory;
 
+
+//TODO: This must be refactored such that this class only produces DTOs From Objects
+// I.e. Match Obj -> MatchDTO
+// Match factory should worry about matchData -> match obj
 public class FootballDataDTOFactory {
 
     public static MatchDTO createMatchDTOfromMatchData(Map<String, Object> matchData) {
@@ -37,13 +41,19 @@ public class FootballDataDTOFactory {
     }
 
     public static PlayerDTO createPlayerDTOfromPlayerData(Map<String, Object> playerData) {
-        String firstName = (String) playerData.get("firstName");
-        String lastName = (String) playerData.get("lastName");
+        String fullName = (String) playerData.get("name");
+        
+        //Split fullname to name parts.
+        String[] nameParts = fullName != null ? fullName.split(" ", 2) : new String[]{"", ""}; // ternary to check null
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : ""; // ternary to check length
+
         String position = (String) playerData.get("position");
         String dateOfBirth = (String) playerData.get("dateOfBirth");
         String nationality = (String) playerData.get("nationality");
-        String startOfContractWithCurrentTeam = (String) playerData.get("startOfContract");
-        String endOfContractWithCurrentTeam = (String) playerData.get("endOfContract");
+        
+        String startOfContractWithCurrentTeam = null;
+        String endOfContractWithCurrentTeam = null;
         
         return new PlayerDTO(
             firstName, 
@@ -56,6 +66,19 @@ public class FootballDataDTOFactory {
         );
     }
 
+    public static PlayerDTO createPlayerDTOfromPlayer(Player player) {
+        return new PlayerDTO(
+            player.getFirstName(),
+            player.getLastName(),
+            player.getPosition(),
+            player.getDateOfBirth(),
+            player.getNationality(),
+            player.getStartOfContractWithCurrentTeam(),
+            player.getEndOfContractWithCurrentTeam()
+        );
+    }
+
+    
     public static TeamDTO createTeamDTO (Team team) {
         TeamDTO teamDTO = new TeamDTO(team);
         return teamDTO;
