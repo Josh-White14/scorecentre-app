@@ -170,7 +170,7 @@ public class FootballDataService {
     public TeamDTO queryTeamByName(String teamName) {
         Team team = resolveTeam(teamName);
 
-        List<Player> playersList = playerRepository.findAllById(team.getPlayerIds());
+        List<Player> playersList = playerRepository.findByIdIn(team.getPlayerIds());
 
          Map<String, String> players = playersList.stream()
             .collect(Collectors.toMap(
