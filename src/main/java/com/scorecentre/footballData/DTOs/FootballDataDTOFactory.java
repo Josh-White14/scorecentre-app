@@ -6,6 +6,10 @@ import com.scorecentre.models.Team;
 import com.scorecentre.models.Player;
 import com.scorecentre.repository.TeamFactory;
 
+
+//TODO: This must be refactored such that this class only produces DTOs From Objects
+// I.e. Match Obj -> MatchDTO
+// Match factory should worry about matchData -> match obj
 public class FootballDataDTOFactory {
 
     public static MatchDTO createMatchDTOfromMatchData(Map<String, Object> matchData) {
@@ -62,6 +66,19 @@ public class FootballDataDTOFactory {
         );
     }
 
+    public static PlayerDTO createPlayerDTOfromPlayer(Player player) {
+        return new PlayerDTO(
+            player.getFirstName(),
+            player.getLastName(),
+            player.getPosition(),
+            player.getDateOfBirth(),
+            player.getNationality(),
+            player.getStartOfContractWithCurrentTeam(),
+            player.getEndOfContractWithCurrentTeam()
+        );
+    }
+
+    
     public static TeamDTO createTeamDTO (Team team) {
         TeamDTO teamDTO = new TeamDTO(team);
         return teamDTO;

@@ -1,6 +1,7 @@
 package com.scorecentre.models;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "players")
@@ -9,6 +10,7 @@ public class Player {
     @Id
     private String id;
 
+    @Indexed(unique=true)
     private int playerFootballDataId; // ID within FBDATA API   
     private String firstName;
     private String lastName;
