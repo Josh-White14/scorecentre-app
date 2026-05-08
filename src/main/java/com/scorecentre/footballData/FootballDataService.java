@@ -29,6 +29,7 @@ import com.scorecentre.repository.PlayerFactory;
 import com.scorecentre.repository.PlayerRepository;
 
 
+/** TODO: This needs to be refactored */
 @Service
 public class FootballDataService {
     
@@ -112,8 +113,7 @@ public class FootballDataService {
                     String name = (String) t.get("name");
                     String shortName = (String) t.get("shortName");
 
-                    if ((name != null && name.equalsIgnoreCase(teamName)) ||
-                        (shortName != null && shortName.equalsIgnoreCase(teamName))) {
+                    if ((teamNameMatches((String) t.get("name"), (String) t.get("shortName"), teamName))) {
                         return ((Number) t.get("id")).intValue();
                     }
                 }
@@ -245,28 +245,8 @@ public class FootballDataService {
 
     private TeamDTO resolveTeamDTO(Map<String, Object> teamData) {
         String teamName = (String) teamData.get("name");
-        String shortName = (String) teamData.get("shortName");
-        String normalisedName = teamName != null ? teamName.trim().toLowerCase() : null;
-        String normalisedShort = shortName != null ? shortName.trim().toLowerCase() : null;
-
-        // try both
-        Team team = teamRepository.findByteamName(normalisedName);
-        if (team == null) {
-            team = teamRepository.findByteamName(normalisedShort);
-        }
-
-        // return if in db
-        if (team != null && team.getShortName() != null) {
-            team = resolveTeam(teamName);
-            return new TeamDTO(team, getPlayerMapForTeam(team));
-        }
-
-        Team matchTeam = new Team();
-        matchTeam.setTeamName(teamName);
-        matchTeam.setShortName(shortName);
-        matchTeam.setTla((String) teamData.get("tla"));
-        matchTeam.setCrest((String) teamData.get("crest"));
-        return new TeamDTO(matchTeam, getPlayerMapForTeam(matchTeam));
+        Team team = resolveTeam(teamName);
+        return new TeamDTO(team, getPlayerMapForTeam(team));
     }
 
     private Map<String, String> getPlayerMapForTeam(Team team) {
@@ -280,6 +260,18 @@ public class FootballDataService {
                         Player::getId,
                         p -> p.getFirstName() + " " + p.getLastName()
                 ));
+    }
+
+    private boolean teamNameMatches(String apiName, String apiShortName, String searchName) {
+        if (searchName == null) return false;
+        String search = searchName.toLowerCase();
+        String name = apiName != null ? apiName.toLowerCase() : "";
+        String shortName = apiShortName != null ? apiShortName.toLowerCase() : "";
+
+        return name.equals(search) ||
+            shortName.equals(search) ||
+            name.contains(search) ||
+            search.contains(name);
     }
 
 }
