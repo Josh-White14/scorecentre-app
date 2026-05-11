@@ -1,14 +1,12 @@
 package com.scorecentre.footballData;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -49,13 +47,13 @@ public class FootballDataService {
         }
     
     
-    public MatchDTO queryTeamMatchesByName(String teamName) {
+    public ResponseEntity<MatchDTO> queryTeamMatchesByName(String teamName) {
         Team team = resolveTeam(teamName);
-        return fetchMatchesFromApi(team.getFootballDataId());
+        return ResponseEntity.of(fetchMatchesFromApi(team.getFootballDataId()));
     }
 
 
-    private MatchDTO fetchMatchesFromApi(int teamId) {
+    private Optional<MatchDTO> fetchMatchesFromApi(int teamId) {
         try {
             String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED";
 
@@ -80,9 +78,11 @@ public class FootballDataService {
                     TeamDTO homeTeam = resolveTeamDTO(homeTeamData);
                     TeamDTO awayTeam = resolveTeamDTO(awayTeamData);
 
-                    return FootballDataDTOFactory.createMatchDTOfromMatchData(matchData, homeTeam, awayTeam);
+                    return Optional.of(FootballDataDTOFactory.createMatchDTOfromMatchData(matchData, homeTeam, awayTeam));
                 }
+                return Optional.empty();
             }
+
         } catch (RestClientException e) {
             System.err.println("Error making request to API: " + e.getMessage());
             e.printStackTrace();
@@ -110,8 +110,6 @@ public class FootballDataService {
                 List<Map<String, Object>> teams = (List<Map<String, Object>>) body.get("teams");
 
                 for (Map<String, Object> t : teams) {
-                    String name = (String) t.get("name");
-                    String shortName = (String) t.get("shortName");
 
                     if ((teamNameMatches((String) t.get("name"), (String) t.get("shortName"), teamName))) {
                         return ((Number) t.get("id")).intValue();
@@ -135,7 +133,7 @@ public class FootballDataService {
         }
     }
 
-    public List<PlayerDTO> fetchSquadByTeamName(String teamName) {
+    public ResponseEntity<List<PlayerDTO>> fetchSquadByTeamName(String teamName) {
         Team team = resolveTeam(teamName);
 
         if (team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
@@ -143,9 +141,9 @@ public class FootballDataService {
         }
         List<Player> players = playerRepository.findByIdIn(team.getPlayerIds());
         
-        return players.stream()
+        return ResponseEntity.ok(players.stream()
                 .map(FootballDataDTOFactory::createPlayerDTOfromPlayer)
-                .toList();
+                .toList());
     }
 
     private Team resolveTeam(String teamName) {
