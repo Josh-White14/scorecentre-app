@@ -17,6 +17,10 @@
   <name>scorecentre-app</name>
   <url>http://maven.apache.org</url>
 
+  <properties>
+    <java.version>21</java.version>
+  </properties>
+
   <dependencies>
 
     <dependency>

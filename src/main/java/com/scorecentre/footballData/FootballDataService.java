@@ -6,14 +6,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.scorecentre.exceptions.ResourceNotFoundException;
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
@@ -32,7 +38,7 @@ import com.scorecentre.repository.PlayerRepository;
 public class FootballDataService {
     
     private final RestClient restClient;
-    
+
     @Autowired
     private TeamRepository teamRepository;
 
@@ -74,15 +80,35 @@ public class FootballDataService {
 
                     Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
                     Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
+                    
+                    // Java async hell - vThreads
+                    // https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html
 
-                    TeamDTO homeTeam = resolveTeamDTO(homeTeamData);
-                    TeamDTO awayTeam = resolveTeamDTO(awayTeamData);
+                    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
-                    return Optional.of(FootballDataDTOFactory.createMatchDTOfromMatchData(matchData, homeTeam, awayTeam));
+                        CompletableFuture<TeamDTO> homeTeamFuture = CompletableFuture.supplyAsync(
+                            () -> resolveTeamDTO(homeTeamData), executor);
+
+                        CompletableFuture<TeamDTO> awayTeamFuture = CompletableFuture.supplyAsync(
+                            () -> resolveTeamDTO(awayTeamData), executor);
+
+                        CompletableFuture.allOf(homeTeamFuture, awayTeamFuture).join();
+
+                        TeamDTO homeTeam = homeTeamFuture.get();
+                        TeamDTO awayTeam = awayTeamFuture.get();
+
+                        return Optional.of(FootballDataDTOFactory.createMatchDTOfromMatchData(matchData, homeTeam, awayTeam));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
                 }
-                return Optional.empty();
             }
-
+           return Optional.empty();
+            } 
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded, try again later");
         } catch (RestClientException e) {
             System.err.println("Error making request to API: " + e.getMessage());
             e.printStackTrace();
@@ -162,6 +188,7 @@ public class FootballDataService {
         }
 
         if (team.getShortName() == null || team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
+            //TODO: CONCURRENCY HERE
             team = fetchAndSaveTeamDetails(team, teamId);
             teamRepository.save(team);
         }
@@ -218,21 +245,42 @@ public class FootballDataService {
                 
                 // players
                 List<Map<String, Object>> squad = (List<Map<String, Object>>) mapResponse.get("squad");
+                
                 if (squad != null && !squad.isEmpty()) {
+
                     List<String> playerIds = new ArrayList<>();
-                    for (Map<String, Object> playerData : squad) {
-                        int apiId = ((Number) playerData.get("id")).intValue();
-                        Player player = playerRepository.findByPlayerFootballDataId(apiId);
-                        if (player == null) {
-                            player = PlayerFactory.createFromAPIData(playerData);
-                        }
-                        Player saved = playerRepository.save(player);
-                        playerIds.add(saved.getId());
+                    
+                    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+                        List<CompletableFuture<String>> futures = squad.stream()
+                            .map(playerData -> CompletableFuture.supplyAsync(() -> {
+
+                                int apiId = ((Number) playerData.get("id")).intValue();
+                                Player player = playerRepository.findByPlayerFootballDataId(apiId);
+                                
+                                if (player == null) {
+                                    player = PlayerFactory.createFromAPIData(playerData);
+                                }
+                            
+                                return playerRepository.save(player).getId();
+                            }, executor))
+                        .toList();
+
+                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+                    for (CompletableFuture<String> f : futures) {
+                        playerIds.add(f.get());
                     }
+
                     team.setPlayerIds(playerIds);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                    }
                 }
             }
-
         } catch (RestClientException e) {
             System.err.println("Error fetching team details: " + e.getMessage());
             e.printStackTrace();
