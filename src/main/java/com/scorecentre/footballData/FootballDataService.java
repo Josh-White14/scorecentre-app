@@ -10,6 +10,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -44,6 +48,8 @@ public class FootballDataService {
 
     @Autowired
     private PlayerRepository playerRepository;
+
+    private static Logger logger = LogManager.getLogger(FootballDataService.class);
     
     public FootballDataService(RestClient.Builder builder, @Value("${FOOTBALL_DATA_API_KEY}") String apiKey) {
 
@@ -108,9 +114,10 @@ public class FootballDataService {
            return Optional.empty();
             } 
         } catch (HttpClientErrorException.TooManyRequests e) {
+            logger.error("Error making api request. Rate limit hit");
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded, try again later");
         } catch (RestClientException e) {
-            System.err.println("Error making request to API: " + e.getMessage());
+            logger.error("Error making api request to" + e.getMessage());
             e.printStackTrace();
         }
             throw new ResourceNotFoundException("Team not found");
