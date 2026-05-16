@@ -12,32 +12,18 @@ import com.scorecentre.repository.TeamFactory;
 // Match factory should worry about matchData -> match obj
 public class FootballDataDTOFactory {
 
-    public static MatchDTO createMatchDTOfromMatchData(Map<String, Object> matchData) {
-
-        Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
-        Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
-        Map<String, Object> scoreData    = (Map<String, Object>) matchData.get("score");
-        Map<String, Object> fullTime     = (Map<String, Object>) scoreData.get("fullTime");
-        Map<String, Object> competition  = (Map<String, Object>) matchData.get("competition");
-
-        String status = (String) matchData.get("status");
-
-        Team homeTeam = TeamFactory.createFromMatchAPIData(homeTeamData);
-        Team awayTeam = TeamFactory.createFromMatchAPIData(awayTeamData);
+    public static MatchDTO createMatchDTOfromMatchData(Map<String, Object> matchData, TeamDTO homeTeam, TeamDTO awayTeam) {
         
-        String result = fullTime.get("home") + "-" + fullTime.get("away");
+        Map<String, Object> scoreData   = (Map<String, Object>) matchData.get("score");
+        Map<String, Object> fullTime    = (Map<String, Object>) scoreData.get("fullTime");
+        Map<String, Object> competition = (Map<String, Object>) matchData.get("competition");
+
+        String result          = fullTime.get("home") + "-" + fullTime.get("away");
         String competitionName = (String) competition.get("name");
-        String utcDate = (String) matchData.get("utcDate");
-        
+        String utcDate         = (String) matchData.get("utcDate");
+        String status          = (String) matchData.get("status");
 
-        return new MatchDTO(
-            homeTeam,
-            awayTeam,
-            status,
-            result,
-            competitionName, 
-            utcDate
-        );
+        return new MatchDTO(homeTeam, awayTeam, status, result, competitionName, utcDate);
     }
 
     public static PlayerDTO createPlayerDTOfromPlayerData(Map<String, Object> playerData) {

@@ -1,20 +1,29 @@
 package com.scorecentre.footballData;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.scorecentre.exceptions.ResourceNotFoundException;
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
@@ -28,16 +37,19 @@ import com.scorecentre.repository.PlayerFactory;
 import com.scorecentre.repository.PlayerRepository;
 
 
+/** TODO: This needs to be refactored */
 @Service
 public class FootballDataService {
     
     private final RestClient restClient;
-    
+
     @Autowired
     private TeamRepository teamRepository;
 
     @Autowired
     private PlayerRepository playerRepository;
+
+    private static Logger logger = LogManager.getLogger(FootballDataService.class);
     
     public FootballDataService(RestClient.Builder builder, @Value("${FOOTBALL_DATA_API_KEY}") String apiKey) {
 
@@ -47,16 +59,15 @@ public class FootballDataService {
         }
     
     
-    public MatchDTO queryTeamMatchesByName(String teamName) {
+    public ResponseEntity<MatchDTO> queryTeamMatchesByName(String teamName) {
         Team team = resolveTeam(teamName);
-        return fetchMatchesFromApi(team.getFootballDataId());
+        return ResponseEntity.of(fetchMatchesFromApi(team.getFootballDataId()));
     }
 
 
-    private MatchDTO fetchMatchesFromApi(int teamId) {
+    private Optional<MatchDTO> fetchMatchesFromApi(int teamId) {
         try {
-            String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED&limit=3";
-            System.out.println("Requesting URL: " + uriString);
+            String uriString = "https://api.football-data.org/v4/teams/" + teamId + "/matches?status=FINISHED";
 
             ResponseEntity<Object> response = this.restClient.get()
                     .uri(URI.create(uriString))
@@ -71,12 +82,42 @@ public class FootballDataService {
                 List<Map<String, Object>> matches = (List<Map<String, Object>>) mapResponse.get("matches");
 
                 if (matches != null && !matches.isEmpty()) {
-                    return FootballDataDTOFactory.createMatchDTOfromMatchData((Map<String, Object>) matches.get(0));
+                    Map<String, Object> matchData = (Map<String, Object>) matches.get(0);
+
+                    Map<String, Object> homeTeamData = (Map<String, Object>) matchData.get("homeTeam");
+                    Map<String, Object> awayTeamData = (Map<String, Object>) matchData.get("awayTeam");
+                    
+                    // Java async hell - vThreads
+                    // https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html
+
+                    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+                        CompletableFuture<TeamDTO> homeTeamFuture = CompletableFuture.supplyAsync(
+                            () -> resolveTeamDTO(homeTeamData), executor);
+
+                        CompletableFuture<TeamDTO> awayTeamFuture = CompletableFuture.supplyAsync(
+                            () -> resolveTeamDTO(awayTeamData), executor);
+
+                        CompletableFuture.allOf(homeTeamFuture, awayTeamFuture).join();
+
+                        TeamDTO homeTeam = homeTeamFuture.get();
+                        TeamDTO awayTeam = awayTeamFuture.get();
+
+                        return Optional.of(FootballDataDTOFactory.createMatchDTOfromMatchData(matchData, homeTeam, awayTeam));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
                 }
             }
-
+           return Optional.empty();
+            } 
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            logger.error("Error making api request. Rate limit hit");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded, try again later");
         } catch (RestClientException e) {
-            System.err.println("Error making request to API: " + e.getMessage());
+            logger.error("Error making api request to" + e.getMessage());
             e.printStackTrace();
         }
             throw new ResourceNotFoundException("Team not found");
@@ -89,7 +130,6 @@ public class FootballDataService {
             
             String uri = "https://api.football-data.org/v4/competitions/PL/teams";
             
-            System.out.println("Fetching PL teams to find: " + teamName);
             
             ResponseEntity<Map> response = restClient.get()
                 .uri(URI.create(uri))
@@ -103,11 +143,8 @@ public class FootballDataService {
                 List<Map<String, Object>> teams = (List<Map<String, Object>>) body.get("teams");
 
                 for (Map<String, Object> t : teams) {
-                    String name = (String) t.get("name");
-                    String shortName = (String) t.get("shortName");
 
-                    if ((name != null && name.equalsIgnoreCase(teamName)) ||
-                        (shortName != null && shortName.equalsIgnoreCase(teamName))) {
+                    if ((teamNameMatches((String) t.get("name"), (String) t.get("shortName"), teamName))) {
                         return ((Number) t.get("id")).intValue();
                     }
                 }
@@ -129,37 +166,36 @@ public class FootballDataService {
         }
     }
 
-    public List<PlayerDTO> fetchSquadByTeamName(String teamName) {
+    public ResponseEntity<List<PlayerDTO>> fetchSquadByTeamName(String teamName) {
         Team team = resolveTeam(teamName);
-        System.out.println("Player IDs size: " + team.getPlayerIds().size());
-        System.out.println("Player IDs: " + team.getPlayerIds());
 
         if (team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
             throw new ResourceNotFoundException("No squad found for team: " + teamName);
         }
         List<Player> players = playerRepository.findByIdIn(team.getPlayerIds());
-        System.out.println("Players found by findAllById: " + players.size());
         
-        return players.stream()
+        return ResponseEntity.ok(players.stream()
                 .map(FootballDataDTOFactory::createPlayerDTOfromPlayer)
-                .toList();
+                .toList());
     }
 
     private Team resolveTeam(String teamName) {
-        Team team = teamRepository.findByteamName(teamName);
+        String normalised = teamName.trim().toLowerCase();
+        Team team = teamRepository.findByteamName(normalised);
 
         if (team == null) {
             team = new Team();
-            team.setTeamName(teamName);
+            team.setTeamName(normalised);
         }
 
         int teamId = team.getFootballDataId();
         if (teamId == 0) {
-            teamId = fetchTeamIdFromApi(teamName);
+            teamId = fetchTeamIdFromApi(normalised);
             team.setFootballDataId(teamId);
         }
 
         if (team.getShortName() == null || team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
+            //TODO: CONCURRENCY HERE
             team = fetchAndSaveTeamDetails(team, teamId);
             teamRepository.save(team);
         }
@@ -168,17 +204,9 @@ public class FootballDataService {
     }
 
     public TeamDTO queryTeamByName(String teamName) {
-        Team team = resolveTeam(teamName);
-
-        List<Player> playersList = playerRepository.findByIdIn(team.getPlayerIds());
-
-         Map<String, String> players = playersList.stream()
-            .collect(Collectors.toMap(
-                    Player::getId,
-                    p -> p.getFirstName() + " " + p.getLastName()
-            ));
-
-        return new TeamDTO(team, players);
+        String normalised = teamName.trim().toLowerCase();
+        Team team = resolveTeam(normalised);
+        return new TeamDTO(team, getPlayerMapForTeam(team));
     }
 
 
@@ -196,6 +224,10 @@ public class FootballDataService {
 
             if (responseBody instanceof Map) {
                 Map<String, Object> mapResponse = (Map<String, Object>) responseBody;
+
+                team.setShortName((String) mapResponse.get("shortName"));
+                team.setTla((String) mapResponse.get("tla"));
+                team.setCrest((String) mapResponse.get("crest"));
 
                 // area
                 Map<String, Object> area = (Map<String, Object>) mapResponse.get("area");
@@ -220,29 +252,79 @@ public class FootballDataService {
                 
                 // players
                 List<Map<String, Object>> squad = (List<Map<String, Object>>) mapResponse.get("squad");
+                
                 if (squad != null && !squad.isEmpty()) {
+
                     List<String> playerIds = new ArrayList<>();
-                    for (Map<String, Object> playerData : squad) {
-                        System.out.println("Saving " + playerIds.size() + " players to team");
-                        int apiId = ((Number) playerData.get("id")).intValue();
-                        Player player = playerRepository.findByPlayerFootballDataId(apiId);
-                        if (player == null) {
-                            player = PlayerFactory.createFromAPIData(playerData);
-                        }
-                        Player saved = playerRepository.save(player);
-                        playerIds.add(saved.getId());
+                    
+                    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+                        List<CompletableFuture<String>> futures = squad.stream()
+                            .map(playerData -> CompletableFuture.supplyAsync(() -> {
+
+                                int apiId = ((Number) playerData.get("id")).intValue();
+                                Player player = playerRepository.findByPlayerFootballDataId(apiId);
+                                
+                                if (player == null) {
+                                    player = PlayerFactory.createFromAPIData(playerData);
+                                }
+                            
+                                return playerRepository.save(player).getId();
+                            }, executor))
+                        .toList();
+
+                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+                    for (CompletableFuture<String> f : futures) {
+                        playerIds.add(f.get());
                     }
-                    System.out.println("Saving " + playerIds.size() + " players to team");
+
                     team.setPlayerIds(playerIds);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                    }
                 }
             }
-
         } catch (RestClientException e) {
             System.err.println("Error fetching team details: " + e.getMessage());
             e.printStackTrace();
         }
 
         return team;
+    }
+
+    private TeamDTO resolveTeamDTO(Map<String, Object> teamData) {
+        String teamName = (String) teamData.get("name");
+        Team team = resolveTeam(teamName);
+        return new TeamDTO(team, getPlayerMapForTeam(team));
+    }
+
+    private Map<String, String> getPlayerMapForTeam(Team team) {
+
+        if (team.getPlayerIds() == null || team.getPlayerIds().isEmpty()) {
+            return new HashMap<>();
+        }
+        return playerRepository.findByIdIn(team.getPlayerIds())
+                .stream()
+                .collect(Collectors.toMap(
+                        Player::getId,
+                        p -> p.getFirstName() + " " + p.getLastName()
+                ));
+    }
+
+    private boolean teamNameMatches(String apiName, String apiShortName, String searchName) {
+        if (searchName == null) return false;
+        String search = searchName.toLowerCase();
+        String name = apiName != null ? apiName.toLowerCase() : "";
+        String shortName = apiShortName != null ? apiShortName.toLowerCase() : "";
+
+        return name.equals(search) ||
+            shortName.equals(search) ||
+            name.contains(search) ||
+            search.contains(name);
     }
 
 }

@@ -2,7 +2,9 @@ package com.scorecentre.footballData;
 
 import java.util.List;
 
+import org.apache.catalina.connector.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.scorecentre.footballData.DTOs.FootballDataDTOFactory;
@@ -32,31 +34,28 @@ public class FootballDataController {
     TeamRepository teamRepository;
 
     @GetMapping("/matches/{teamName}")
-    public MatchDTO getTeamLatestMatchByName(@PathVariable String teamName) {
-        MatchDTO response = footballDataService.queryTeamMatchesByName(teamName); //"Burnley FC" 
-        return response;
+    public ResponseEntity<MatchDTO> getTeamLatestMatchByName(@PathVariable String teamName) {
+        return footballDataService.queryTeamMatchesByName(teamName.replace("-", " ").trim()); //remove spaces
     }
 
-    // Repeat above for teams endpoint, but return list of teams instead of matches. 
 
     @GetMapping("/teams/all")
-    public List<TeamDTO> getAllTeams() {
+    public ResponseEntity<List<TeamDTO>> getAllTeams() {
         List<TeamDTO> teams = teamRepository.findAll().stream().map(team -> FootballDataDTOFactory.createTeamDTO(team)).toList();
-        return teams;
+        return ResponseEntity.ok(teams);
     }
+    
 
     @GetMapping("/teams/{teamName}/players")
-    public List<PlayerDTO> getAllPlayerFromTeam(@PathVariable String teamName) {
-        List<PlayerDTO> players = footballDataService.fetchSquadByTeamName(teamName);
-        return players;
+    public ResponseEntity<List<PlayerDTO>> getAllPlayerFromTeam(@PathVariable String teamName) {
+        return footballDataService.fetchSquadByTeamName(teamName.replace("-", " ").trim());
     }
 
-    
-    
+
     @GetMapping("/teams/{teamName}")
-    public TeamDTO getTeamByName(@PathVariable String teamName) {
-        TeamDTO response = footballDataService.queryTeamByName(teamName);
-        return response;
+    public ResponseEntity<TeamDTO> getTeamByName(@PathVariable String teamName) {
+        TeamDTO response = footballDataService.queryTeamByName(teamName.replace("-", " ").trim());
+        return ResponseEntity.ok(response);
     }
     
     
