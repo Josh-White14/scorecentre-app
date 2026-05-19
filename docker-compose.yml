@@ -19,5 +19,10 @@ services:
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/teams
 
+  fbref-service:
+    build: ./pythonScrapers
+    ports:
+      - "8001:8001"
+
 volumes:
   mongo_data:

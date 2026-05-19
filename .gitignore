@@ -20,3 +20,6 @@
 
 #Secrets
 .env
+
+.venv/
+.venv/bin/
